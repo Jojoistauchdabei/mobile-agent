@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_desc">Mobile Agent bedient auf Wunsch Apps per Accessibility (nur nach Freigabe).</string>
+</resources>

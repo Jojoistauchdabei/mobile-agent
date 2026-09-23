@@ -1,0 +1,26 @@
+# Android / Gradle
+.local/
+.gradle/
+build/
+app/build/
+*.apk
+*.aab
+*.ap_
+local.properties
+*.jks
+*.keystore
+
+# Modelle (Gewichte nicht committen, nur Config)
+app/src/main/assets/models/*.bin
+app/src/main/assets/models/*.gguf
+app/src/main/assets/models/*.onnx
+!app/src/main/assets/models/.gitkeep
+
+# SDK (Userspace-Install)
+Android/
+
+# OS / Editor
+.DS_Store
+.idea/
+*.iml
+.vscode/

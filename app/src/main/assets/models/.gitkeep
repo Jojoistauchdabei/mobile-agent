@@ -1,0 +1,4 @@
+# Platzhalter: echte Gewichte via scripts/setup-models.sh laden, NICHT committen.
+# - ggml-tiny.bin (Whisper, ~75 MB)
+# - Ternary-Bonsai-1.7B-Q2_0.gguf (442 MB)
+# - laya-multilingual.onnx (ONNX-Export aus convaiinnovations/laya-multilingual)
