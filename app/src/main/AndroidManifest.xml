@@ -10,7 +10,7 @@
     <application
         android:name=".AgentApp"
         android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@android:mipmap/sym_def_app_icon"
         android:label="Mobile Agent"
         android:theme="@android:style/Theme.Material.Light">
         <activity
