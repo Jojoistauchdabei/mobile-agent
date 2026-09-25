@@ -36,6 +36,7 @@ android {
         targetSdk = 34
         versionCode = versionCodeProp
         versionName = versionNameProp
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     if (releaseSigningAvailable) {
         signingConfigs {
@@ -84,4 +85,8 @@ dependencies {
     implementation(libs.compose.material3)
     testImplementation(libs.junit)
     testImplementation(libs.json)
+    androidTestImplementation(libs.androidx.test.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.core)
+    androidTestImplementation(libs.espresso.core)
 }

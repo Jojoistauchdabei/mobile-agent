@@ -32,7 +32,8 @@ for abi in $ABIS; do
     -DANDROID_ABI="$abi" \
     -DANDROID_PLATFORM=29 \
     -DCMAKE_BUILD_TYPE=Release \
-    -DBUILD_SHARED_LIBS=OFF
+    -DBUILD_SHARED_LIBS=OFF \
+    -DGGML_OPENMP=OFF
   cmake --build "$build" --config Release --target mobileagent-whisper -j"$(nproc)"
   mkdir -p "$ROOT/app/src/main/jniLibs/$abi"
   cp "$build/libmobileagent-whisper.so" "$ROOT/app/src/main/jniLibs/$abi/"
