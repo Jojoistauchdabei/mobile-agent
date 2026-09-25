@@ -3,6 +3,9 @@
 Alle relevanten Änderungen stehen hier (Keep a Changelog, SemVer).
 
 ## [Unreleased]
+
+## [0.2.0] – 2026-09-25
+
 ### Added
 - AudioRecord-/VAD-Aufnahme mit 16-kHz-Mono-PCM und Runtime-Mikrofonberechtigung.
 - Verifizierter, atomarer Modell-Manager mit SHA-256-Prüfung und In-App-Download.
