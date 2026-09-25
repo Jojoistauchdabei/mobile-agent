@@ -1,10 +1,10 @@
 package com.mobileagent
 
-/** Laya-Entscheidung: typisierte Antworten, kalibrierte Confidence. */
 data class RouteDecision(
-    val intent: String, // chat | search | device_action | unsafe
+    val intent: String,
     val needsSearch: Boolean,
     val needsAction: Boolean,
     val blocked: Boolean,
     val confidence: Double,
+    val source: String = "heuristic",
 )

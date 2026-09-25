@@ -8,6 +8,14 @@ if ! avdmanager list avd 2>/dev/null | grep -q "$AVD"; then
   echo "AVD '$AVD' fehlt. Anlegen mit: scripts/create-emulator.sh"
   exit 1
 fi
-emulator -avd "$AVD" -no-snapshot -wipe-data &
+emulator -avd "$AVD" -no-snapshot -wipe-data -no-audio -gpu swiftshader_indirect -memory 3072 -cores 6 &
 adb wait-for-device
-echo "Emulator läuft."
+for _ in $(seq 1 60); do
+  if [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '[:space:]')" = "1" ]; then
+    echo "Emulator läuft."
+    exit 0
+  fi
+  sleep 5
+done
+echo "Emulator ist nicht vollständig gebootet."
+exit 1

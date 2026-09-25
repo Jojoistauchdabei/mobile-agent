@@ -1,20 +1,41 @@
 #!/usr/bin/env bash
-# Lädt Default-Modelle (lokal, kein Commit). Aufruf aus Repo-Root.
 set -euo pipefail
-OUT="app/src/main/assets/models"
+
+OUT="${MODEL_DIR:-models}"
 mkdir -p "$OUT"
 
-echo "== Whisper tiny (ggml, ~75 MB) =="
-curl -L -o "$OUT/ggml-tiny.bin" \
-  https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin
+download() {
+  local name="$1"
+  local url="$2"
+  local expected_size="$3"
+  local expected_sha="$4"
+  local target="$OUT/$name"
+  local temporary="$target.part"
 
-echo "== Ternary-Bonsai-1.7B Q2_0 (442 MB, Prism-Fork nötig) =="
-curl -L -o "$OUT/Ternary-Bonsai-1.7B-Q2_0.gguf" \
-  https://huggingface.co/prism-ml/Ternary-Bonsai-1.7B-gguf/resolve/main/Ternary-Bonsai-1.7B-Q2_0.gguf
+  if [[ -f "$target" ]] && [[ "$(stat -c '%s' "$target")" == "$expected_size" ]] && [[ "$(sha256sum "$target" | cut -d' ' -f1)" == "$expected_sha" ]]; then
+    printf '%s already verified\n' "$name"
+    return
+  fi
 
-echo "== Laya multilingual =="
-echo "Hinweis: Laya liefert PyTorch-Weights (convaiinnovations/laya-multilingual, ~647 MB)."
-echo "Für On-Device nach ONNX exportieren, z. B.:"
-echo "  optimum-cli export onnx --model convaiinnovations/laya-multilingual --task text-classification laya-multilingual-onnx/"
-echo "und laya-multilingual.onnx nach $OUT/ legen."
-echo "Fertig."
+  rm -f "$temporary"
+  printf 'Downloading %s\n' "$name"
+  curl --fail --location --retry 3 --output "$temporary" "$url"
+  [[ "$(stat -c '%s' "$temporary")" == "$expected_size" ]]
+  [[ "$(sha256sum "$temporary" | cut -d' ' -f1)" == "$expected_sha" ]]
+  mv "$temporary" "$target"
+}
+
+download \
+  "ggml-tiny.bin" \
+  "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin" \
+  "77691713" \
+  "be07e048e1e599ad46341c8d2a135645097a538221678b7acdd1b1919c6e1b21"
+
+download \
+  "Ternary-Bonsai-1.7B-Q2_0.gguf" \
+  "https://huggingface.co/prism-ml/Ternary-Bonsai-1.7B-gguf/resolve/main/Ternary-Bonsai-1.7B-Q2_0.gguf" \
+  "463290464" \
+  "d97d94eb564590c9f0300e54d3f87bbbb25a78693d0ade9f6e177973dcb8228a"
+
+printf 'Models are in %s\n' "$OUT"
+printf 'Laya ONNX is not downloaded automatically. Export the multilingual checkpoint and place laya-multilingual.onnx in %s.\n' "$OUT"

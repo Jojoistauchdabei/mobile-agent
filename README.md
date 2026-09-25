@@ -6,10 +6,10 @@ Alles läuft **lokal auf dem Handy**, kein Cloud-Zwang:
 |---|---|---|
 | STT (Sprache → Text) | Whisper (`ggml-tiny.bin`, whisper.cpp) | JNI / whisper.cpp Android |
 | Schnelle Entscheidung / Routing (System-1) | [Laya](https://huggingface.co/convaiinnovations/laya) (`laya-multilingual`, 322M) | ONNX Runtime Mobile |
-| Dialog / Reasoning / Tool-Calls (System-2) | [Ternary-Bonsai-1.7B](https://huggingface.co/prism-ml/Ternary-Bonsai-1.7B-gguf) (GGUF, Q4_K_M Default) | llama.cpp Android (JNI) |
-| Internet-Suche | DuckDuckGo Instant Answer + HTML (kein Key) | Retrofit |
-| Handy-Steuerung | Android Intents + AccessibilityService + VoiceInteraction | nativ |
-| TTS | Android TextToSpeech (lokal) | nativ |
+| Dialog / Reasoning / Tool-Calls (System-2) | [Ternary-Bonsai-1.7B](https://huggingface.co/prism-ml/Ternary-Bonsai-1.7B-gguf) (GGUF, Q2_0, 463 MB) | llama.cpp Android (JNI, Prism-Fork) |
+| Internet-Suche | DuckDuckGo Instant Answer + HTML (kein Key) | OkHttp |
+| Handy-Steuerung | Android Intents, Timer und optionales AccessibilityService | nativ |
+| TTS | Android TextToSpeech | als nächste Ausbaustufe |
 
 **Wichtig zu Laya:** Laya ist *kein* generatives Reasoning-Modell, sondern ein
 nicht-autoregressives Entscheidungs-/Klassifikationsmodell (System-1, ~33 ms).
@@ -18,16 +18,22 @@ Intent erkennen, Safety/Guardrails, Tool-Auswahl (suchen vs. handeln vs. antwort
 Dringlichkeit – und Bonsai 1.7B macht das eigentliche Denken/Sprechen.
 
 ```
-Mic → Whisper (STT) → Laya-Router (intent/safety/tool) → Bonsai-1.7B (LLM)
-    → Tools [DuckDuckGo-Suche | Android-Actions] → Antwort → TTS
+Mic → Whisper (STT) → Laya-Router (optional) → Bonsai-1.7B (LLM)
+    → Tools [DuckDuckGo-Suche | Android-Actions] → Antwort
 ```
+
+Die App enthält bereits die AudioRecord/VAD-Pipeline, verifizierte atomare Modell-Downloads, den optionalen Laya-ONNX-Adapter, sichere Action-Freigabe und die DuckDuckGo-Pipeline. Whisper- und Bonsai-JNI werden über `mobileagent-whisper`/`mobileagent-llama` geladen; die nativen Bibliotheken werden noch nicht in den Standard-APK aufgenommen.
 
 ## Schnellstart
 
-1. `scripts/setup-models.sh` lädt die Default-Modelle nach `app/src/main/assets/models/` (nur Metadaten/Platzhalter im Repo, echte Weights per Skript oder In-App-Download).
-2. Android Studio Hedgehog+ öffnen, SDK 34, JDK 17.
-3. Emulator: `scripts/run-emulator.sh` (Pixel 6, API 34, x86_64).
-4. App starten, Mikro-Erlaubnis geben, sprechen.
+1. Android Studio mit SDK 34 und JDK 17 öffnen und `gradle installDebug` ausführen.
+2. Emulator: `scripts/run-emulator.sh` (Pixel 6, API 34, x86_64) und Boot abwarten.
+3. `scripts/setup-models.sh` lädt Whisper und Bonsai verifiziert nach `models/` (Gewichte werden nie committed).
+4. Für Laya: `python -m pip install -r scripts/export-laya-onnx-requirements.txt` und `python scripts/export-laya-onnx.py --output models`; Ergebnis sind `laya-multilingual.onnx` und `laya-tokenizer.json`.
+5. `scripts/install-models.sh` kopiert die Dateien in den installierten Debug-Emulator.
+6. App starten, Mikrofon-Erlaubnis geben und sprechen.
+
+Die App kann Whisper/Bonsai auch im Download-Bereich laden. Laya ist optional: Ohne exportiertes ONNX nutzt sie den Heuristik-Fallback; mit `laya-multilingual.onnx` und `laya-tokenizer.json` wird der ONNX-Backend automatisch erkannt.
 
 Details: `docs/ARCHITECTURE.md`.
 

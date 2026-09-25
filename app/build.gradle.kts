@@ -5,6 +5,20 @@ val versionProps = Properties().apply {
 }
 val versionNameProp = versionProps.getProperty("VERSION_NAME", "0.1.0")
 val versionCodeProp = versionProps.getProperty("VERSION_CODE", "1").toInt()
+val releaseKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
+val releaseSigningAvailable = !releaseKeystorePath.isNullOrBlank() &&
+    !System.getenv("ANDROID_KEYSTORE_PASSWORD").isNullOrBlank() &&
+    !System.getenv("ANDROID_KEY_ALIAS").isNullOrBlank() &&
+    !System.getenv("ANDROID_KEY_PASSWORD").isNullOrBlank()
+val releaseSigningEnvironmentProvided = listOf(
+    releaseKeystorePath,
+    System.getenv("ANDROID_KEYSTORE_PASSWORD"),
+    System.getenv("ANDROID_KEY_ALIAS"),
+    System.getenv("ANDROID_KEY_PASSWORD"),
+).any { !it.isNullOrBlank() }
+if (releaseSigningEnvironmentProvided && !releaseSigningAvailable) {
+    error("Release signing requires ANDROID_KEYSTORE_PATH, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD")
+}
 
 plugins {
     id("com.android.application")
@@ -23,8 +37,21 @@ android {
         versionCode = versionCodeProp
         versionName = versionNameProp
     }
+    if (releaseSigningAvailable) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(releaseKeystorePath)
+                storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("ANDROID_KEY_ALIAS")
+                keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+            }
+        }
+    }
     buildTypes {
         release {
+            if (releaseSigningAvailable) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -56,4 +83,5 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)
     testImplementation(libs.junit)
+    testImplementation(libs.json)
 }

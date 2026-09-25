@@ -1,0 +1,7 @@
+torch
+transformers
+safetensors
+huggingface_hub
+onnx
+onnxruntime
+numpy

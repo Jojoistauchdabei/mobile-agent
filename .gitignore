@@ -16,6 +16,14 @@ app/src/main/assets/models/*.gguf
 app/src/main/assets/models/*.onnx
 !app/src/main/assets/models/.gitkeep
 
+# Lokale Modell-Dateien
+/models/
+*.part
+
+# Native Buildquellen/-Artefakte
+.native/
+app/src/main/jniLibs/
+
 # SDK (Userspace-Install)
 Android/
 
@@ -24,3 +32,4 @@ Android/
 .idea/
 *.iml
 .vscode/
+__pycache__/

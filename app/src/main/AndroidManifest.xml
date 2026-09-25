@@ -6,12 +6,23 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
 
     <application
         android:name=".AgentApp"
-        android:allowBackup="true"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
         android:icon="@android:mipmap/sym_def_app_icon"
         android:label="Mobile Agent"
+        android:usesCleartextTraffic="false"
         android:theme="@android:style/Theme.Material.Light">
         <activity
             android:name=".MainActivity"
@@ -24,7 +35,12 @@
 
         <service
             android:name=".voice.VoiceService"
+            android:exported="false"
             android:foregroundServiceType="microphone" />
+
+        <receiver
+            android:name=".timer.TimerReceiver"
+            android:exported="false" />
 
         <!-- Handy-Steuerung via Accessibility (Deaktiviert bis User zustimmt) -->
         <service

@@ -2,48 +2,98 @@ package com.mobileagent.router
 
 import android.content.Context
 import com.mobileagent.RouteDecision
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.util.Locale
 
-/**
- * Laya = System-1 Entscheidungsmodell (https://huggingface.co/convaiinnovations/laya).
- * ModernBERT/mmBERT, ONNX. Kein Text-Generator: beantwortet typisierte Fragen
- * in einem Forward-Pass (~33 ms) mit kalibrierten Wahrscheinlichkeiten.
- *
- * Nutzung OPTIONAL (per [RouterConfig]): wenn deaktiviert, läuft die Pipeline
- * ohne Laya (LLM entscheidet direkt). Wenn aktiviert, triggert Laya Actions:
- * intent=choice(chat|search|device_action|unsafe), dazu noul-Fragen
- * (needs_search, needs_action, blocked) + score(urgency).
- */
 data class RouterConfig(
     val enabled: Boolean = true,
     val actionTriggerEnabled: Boolean = true,
     val confidenceThreshold: Double = 0.6,
 )
 
-class LayaRouter(
-    private val context: Context,
-    var config: RouterConfig = RouterConfig(),
-) {
-    // TODO: ONNX Runtime Mobile Session mit laya-multilingual.onnx laden.
-    // Modell-Download siehe scripts/setup-models.sh (322M, Apache-2.0).
+data class LayaPrediction(
+    val intent: String,
+    val needsSearch: Boolean,
+    val needsAction: Boolean,
+    val blocked: Boolean,
+    val confidence: Double,
+)
 
-    fun route(text: String): RouteDecision {
-        if (!config.enabled) {
-            // Bypass: kein Laya-Pflicht – LLM bekommt alles als chat + darf selbst Tools wählen.
-            return RouteDecision("chat", needsSearch = false, needsAction = false, blocked = false, 0.0)
-        }
-        // Heuristik-Platzhalter bis ONNX integriert ist (gleiche Fragen wie Laya):
-        val lower = text.lowercase()
-        val wantsSearch = listOf("suche", "google", "finde", "wetter", "news", "wer ", "was ", "wann ")
-            .any { it in lower }
-        val wantsAction = config.actionTriggerEnabled && listOf("öffne", "starte", "stelle", "ruf an", "timer", "wecker", "helligkeit")
-            .any { it in lower }
-        val blocked = listOf("pin", "passwort", "bank").any { it in lower } && "umgeh" in lower
+interface LayaBackend {
+    fun predict(text: String): LayaPrediction?
+}
+
+class HeuristicLayaBackend(
+    private val actionTriggerEnabled: Boolean,
+) : LayaBackend {
+    override fun predict(text: String): LayaPrediction {
+        val lower = text.lowercase(Locale.ROOT)
+        val wantsSearch = SEARCH_WORDS.any { it in lower }
+        val wantsAction = actionTriggerEnabled && ACTION_WORDS.any { it in lower }
+        val blocked = UNSAFE_WORDS.any { it in lower } && BYPASS_WORDS.any { it in lower }
         val intent = when {
             blocked -> "unsafe"
             wantsAction -> "device_action"
             wantsSearch -> "search"
             else -> "chat"
         }
-        return RouteDecision(intent, wantsSearch, wantsAction, blocked, 0.5)
+        return LayaPrediction(intent, wantsSearch, wantsAction, blocked, 0.5)
+    }
+
+    private companion object {
+        val SEARCH_WORDS = listOf(
+            "suche", "google", "finde", "wetter", "news", "recherche", "aktuelle",
+        )
+        val ACTION_WORDS = listOf(
+            "öffne", "starte", "stelle", "ruf an", "timer", "wecker", "helligkeit", "_app",
+        )
+        val UNSAFE_WORDS = listOf("pin", "passwort", "bank", "zugangsdaten")
+        val BYPASS_WORDS = listOf("umgeh", "umgehen", "knacken", "stehlen")
+    }
+}
+
+class LayaRouter(
+    context: Context,
+    var config: RouterConfig = RouterConfig(),
+    backend: LayaBackend? = null,
+) {
+    private val modelDirectory = context.filesDir.resolve("models")
+    private val injectedBackend = backend ?: LayaBackendFactory.createIfAvailable(modelDirectory)
+
+    val modelFile = modelDirectory.resolve("laya-multilingual.onnx")
+
+    suspend fun route(text: String): RouteDecision = withContext(Dispatchers.Default) {
+        if (!config.enabled) {
+            return@withContext HeuristicLayaBackend(config.actionTriggerEnabled)
+                .predict(text)
+                .toDecision("heuristic-disabled")
+        }
+        val activeBackend = injectedBackend ?: HeuristicLayaBackend(config.actionTriggerEnabled)
+        val source = if (injectedBackend == null) "heuristic" else "laya"
+        val prediction = try {
+            activeBackend.predict(text)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Throwable) {
+            null
+        }
+        prediction?.toDecision(source)
+            ?: HeuristicLayaBackend(config.actionTriggerEnabled).predict(text).toDecision("fallback")
+    }
+
+    private fun LayaPrediction.toDecision(source: String): RouteDecision {
+        val confident = source != "laya" || confidence >= config.confidenceThreshold
+        val safeBlocked = blocked || (intent == "unsafe")
+        val effectiveIntent = if (!confident && source == "laya") "chat" else intent
+        return RouteDecision(
+            intent = effectiveIntent,
+            needsSearch = confident && needsSearch,
+            needsAction = config.actionTriggerEnabled && confident && needsAction,
+            blocked = safeBlocked,
+            confidence = confidence,
+            source = source,
+        )
     }
 }

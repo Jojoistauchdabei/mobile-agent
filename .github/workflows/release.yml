@@ -27,6 +27,19 @@ jobs:
           TAG="${GITHUB_REF#refs/tags/v}"
           echo "VERSION_NAME=$TAG" >> version.properties
           echo "Tag-Version: $TAG"
+      - name: Prepare signing key
+        run: |
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          test -n "$ANDROID_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_KEY_ALIAS"
+          test -n "$ANDROID_KEY_PASSWORD"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/mobile-agent.keystore"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/mobile-agent.keystore" >> "$GITHUB_ENV"
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
       - name: Build release APK + AAB
         run: gradle assembleRelease bundleRelease --stacktrace
         env:
@@ -34,6 +47,10 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      - name: Verify signatures
+        run: |
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose app/build/outputs/apk/release/*.apk
+          jarsigner -verify -strict app/build/outputs/bundle/release/*.aab
       - name: Changelog excerpt
         run: sed -n '1,40p' CHANGELOG.md > release-notes.md
       - name: GitHub Release
