@@ -37,10 +37,20 @@ Die App kann Whisper/Bonsai auch im Download-Bereich laden. Laya ist optional: O
 
 Details: `docs/ARCHITECTURE.md`.
 
-## Releases
+## Releases (automatisch)
 
-- Version in `version.properties` (`VERSION_NAME`, `VERSION_CODE`).
-- Tag pushen `vX.Y.Z` → `.github/workflows/release.yml` baut signiertes APK + AAB, erstellt GitHub Release mit Changelog-Auszug und lädt Artefakte hoch.
+- **Auto-Release:** Jeder Push auf `main` läuft durch `.github/workflows/auto-release.yml`.
+  `scripts/prepare-release.sh` leitet aus Conventional Commits seit dem letzten Tag den Bump ab
+  (`feat:` → minor, `fix:` → patch, `BREAKING CHANGE`/`!` → major), erhöht `VERSION_CODE`,
+  schreibt `version.properties` + `CHANGELOG.md` fort und pusht Commit + Tag `vX.Y.Z`.
+  Ohne `feat:`/`fix:`/Breaking Change gibt es keinen Release (SKIP).
+- **Build:** Der Tag startet `.github/workflows/release.yml`: signiertes APK + AAB,
+  GitHub Release mit Changelog-Auszug und Artefakt-Upload. Benötigt die Secrets
+  `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`,
+  `ANDROID_KEY_PASSWORD` — ohne sie schlägt nur der Release-Job fehl, CI bleibt grün.
+- **Manuell:** `scripts/prepare-release.sh --dry-run` zeigt die nächste Version;
+  mit `--apply` lokal releasen, danach `git push origin main vX.Y.Z`.
+  Ein manuell gepushter Tag `vX.Y.Z` löst ebenfalls den Release-Build aus.
 - Jeder Push/PR läuft durch `.github/workflows/build.yml` (lint + debug-APK + Unit-Tests).
 
 ## Projektstruktur

@@ -1,0 +1,33 @@
+name: auto-release
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-release
+  cancel-in-progress: false
+
+jobs:
+  auto-release:
+    # Eigene Release-Commits duerfen keinen neuen Release ausloesen (Loop-Schutz).
+    if: "!startsWith(github.event.head_commit.message, 'chore(release)')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Git-Identitaet
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Release vorbereiten
+        id: prep
+        run: scripts/prepare-release.sh --apply
+      - name: Release-Commit und Tag pushen
+        if: steps.prep.outputs.created == 'true'
+        run: |
+          git push origin main
+          git push origin "${{ steps.prep.outputs.tag }}"

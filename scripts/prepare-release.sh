@@ -93,7 +93,7 @@ for line in lines:
 open(version_file, "w").write("\n".join(updated) + "\n")
 
 text = open(changelog).read()
-marker = re.search(r"^## \[Unreleased\]\s*\n", text, re.M)
+marker = re.search(r"^## \[Unreleased\][ \t]*\n", text, re.M)
 if not marker:
     sys.exit("CHANGELOG.md enthaelt keinen ## [Unreleased]-Abschnitt")
 start = marker.end()

@@ -3,6 +3,8 @@
 Alle relevanten Änderungen stehen hier (Keep a Changelog, SemVer).
 
 ## [Unreleased]
+### Added
+- Automatisches Release-System: Bump aus Conventional Commits, Changelog-Fortschreibung und Tag-Push per `auto-release.yml` + `scripts/prepare-release.sh`.
 
 ## [0.2.0] – 2026-09-25
 
