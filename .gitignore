@@ -33,3 +33,4 @@ Android/
 *.iml
 .vscode/
 __pycache__/
+.kotlin/
