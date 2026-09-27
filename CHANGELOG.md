@@ -4,6 +4,10 @@ Alle relevanten Änderungen stehen hier (Keep a Changelog, SemVer).
 
 ## [Unreleased]
 
+## [0.4.1] – 2026-09-27
+
+Keine relevanten Änderungen.
+
 ## [0.4.0] – 2026-09-26
 
 Keine relevanten Aenderungen.
