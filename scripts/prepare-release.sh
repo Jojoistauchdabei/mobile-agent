@@ -101,7 +101,7 @@ following = re.search(r"^## \[[0-9]", text[start:], re.M)
 end = start + (following.start() if following else len(text[start:]))
 body = text[start:end].strip("\n")
 entry = f"## [{version}] – {today}\n\n"
-entry += (body + "\n") if body else "Keine relevanten Aenderungen.\n"
+entry += (body + "\n") if body else "Keine relevanten Änderungen.\n"
 text = text[:start] + "\n" + entry + "\n" + text[end:]
 open(changelog, "w").write(text)
 EOF
