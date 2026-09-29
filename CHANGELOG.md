@@ -4,6 +4,8 @@ Alle relevanten Änderungen stehen hier (Keep a Changelog, SemVer).
 
 ## [Unreleased]
 
+## [0.4.2] – 2026-09-29
+
 ### Fixed
 - Release-Build lief nie an: der Auto-Release pusht den Tag mit `GITHUB_TOKEN`, was keinen
   Workflow auslöst. Der Publish-Schritt ist jetzt ein wiederverwendbarer Workflow, den
