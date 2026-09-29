@@ -4,6 +4,14 @@ Alle relevanten Änderungen stehen hier (Keep a Changelog, SemVer).
 
 ## [Unreleased]
 
+### Fixed
+- Release-Build lief nie an: der Auto-Release pusht den Tag mit `GITHUB_TOKEN`, was keinen
+  Workflow auslöst. Der Publish-Schritt ist jetzt ein wiederverwendbarer Workflow, den
+  `auto-release.yml` direkt aufruft.
+- CI und Release auf aktuelle Action-Versionen (Node 24) umgestellt; das fehlergeschlagene
+  `android-actions/setup-android@v3` durch v4 ersetzt.
+- `apksigner`-Pfad wird nicht mehr hart auf Build-Tools 34.0.0 verdrahtet.
+
 ## [0.4.1] – 2026-09-27
 
 Keine relevanten Änderungen.

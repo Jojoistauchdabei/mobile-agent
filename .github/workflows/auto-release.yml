@@ -11,12 +11,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  auto-release:
+  prepare:
     # Eigene Release-Commits duerfen keinen neuen Release ausloesen (Loop-Schutz).
     if: "!startsWith(github.event.head_commit.message, 'chore(release)')"
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.prep.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Git-Identitaet
@@ -31,3 +33,14 @@ jobs:
         run: |
           git push origin main
           git push origin "${{ steps.prep.outputs.tag }}"
+
+  # Der Tag-Push loest bewusst keinen eigenen Workflow aus (Pushes mit
+  # GITHUB_TOKEN starten keine Actions). Deshalb wird der Release hier direkt
+  # als aufrufbarer Workflow gestartet.
+  publish:
+    needs: prepare
+    if: needs.prepare.outputs.tag != ''
+    uses: ./.github/workflows/publish-release.yml
+    with:
+      tag: ${{ needs.prepare.outputs.tag }}
+    secrets: inherit

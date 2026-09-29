@@ -44,13 +44,16 @@ Details: `docs/ARCHITECTURE.md`.
   (`feat:` → minor, `fix:` → patch, `BREAKING CHANGE`/`!` → major), erhöht `VERSION_CODE`,
   schreibt `version.properties` + `CHANGELOG.md` fort und pusht Commit + Tag `vX.Y.Z`.
   Ohne `feat:`/`fix:`/Breaking Change gibt es keinen Release (SKIP).
-- **Build:** Der Tag startet `.github/workflows/release.yml`: signiertes APK + AAB,
-  GitHub Release mit Changelog-Auszug und Artefakt-Upload. Benötigt die Secrets
-  `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`,
-  `ANDROID_KEY_PASSWORD` — ohne sie schlägt nur der Release-Job fehl, CI bleibt grün.
-- **Manuell:** `scripts/prepare-release.sh --dry-run` zeigt die nächste Version;
-  mit `--apply` lokal releasen, danach `git push origin main vX.Y.Z`.
-  Ein manuell gepushter Tag `vX.Y.Z` löst ebenfalls den Release-Build aus.
+- **Publizieren:** Derselbe Lauf ruft danach `.github/workflows/publish-release.yml` direkt auf
+  (wiederverwendbarer Workflow) — signiertes APK + AAB, `apksigner`-/`jarsigner`-Prüfung und
+  GitHub Release mit Changelog-Auszug. Das ist nötig, weil ein Tag-Push mit `GITHUB_TOKEN`
+  keinen Workflow auslöst; ein manuell gepushter Tag tut es über `.github/workflows/release.yml`.
+- **Neu releasen:** `publish-release.yml` ist auch manuell startbar (*Run workflow*, Tag `vX.Y.Z`),
+  wenn ein Release zu einem bestehenden Tag neu gebaut werden soll.
+- **Secrets:** `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`,
+  `ANDROID_KEY_PASSWORD` — ohne sie bricht nur der Release-Schritt ab, CI bleibt grün.
+  Lokal: `~/.android/mobile-agent-secrets.env` (siehe `scripts/`-Workflow im README-Abschnitt).
+- **Manuell vorbereiten:** `scripts/prepare-release.sh --dry-run` zeigt die nächste Version.
 - Jeder Push/PR läuft durch `.github/workflows/build.yml` (lint + debug-APK + Unit-Tests).
 
 ## Projektstruktur

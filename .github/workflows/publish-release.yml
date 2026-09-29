@@ -1,0 +1,77 @@
+name: publish-release
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: Release-Tag, z. B. v0.4.1
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release-Tag, z. B. v0.4.1
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v4
+      - name: Accept licenses
+        run: yes | sdkmanager --licenses
+      - name: Version from tag
+        run: |
+          TAG="${{ inputs.tag }}"
+          if grep -q '^VERSION_NAME=' version.properties; then
+            sed -i "s/^VERSION_NAME=.*/VERSION_NAME=$TAG/" version.properties
+          else
+            echo "VERSION_NAME=$TAG" >> version.properties
+          fi
+          cat version.properties
+      - name: Prepare signing key
+        run: |
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          test -n "$ANDROID_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_KEY_ALIAS"
+          test -n "$ANDROID_KEY_PASSWORD"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/mobile-agent.keystore"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/mobile-agent.keystore" >> "$GITHUB_ENV"
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      - name: Build release APK + AAB
+        run: ./gradlew assembleRelease bundleRelease --stacktrace
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      - name: Verify signatures
+        run: |
+          APKSIGNER="$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)"
+          echo "apksigner: $APKSIGNER"
+          "$APKSIGNER" verify --verbose app/build/outputs/apk/release/*.apk
+          jarsigner -verify -strict app/build/outputs/bundle/release/*.aab
+      - name: Changelog excerpt
+        run: sed -n '1,40p' CHANGELOG.md > release-notes.md
+      - name: GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ inputs.tag }}
+          files: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/bundle/release/*.aab
+          body_path: release-notes.md
+          generate_release_notes: true
