@@ -12,7 +12,8 @@ Alle relevanten Änderungen stehen hier (Keep a Changelog, SemVer).
   `auto-release.yml` direkt aufruft.
 - CI und Release auf aktuelle Action-Versionen (Node 24) umgestellt; das fehlergeschlagene
   `android-actions/setup-android@v3` durch v4 ersetzt.
-- `apksigner`-Pfad wird nicht mehr hart auf Build-Tools 34.0.0 verdrahtet.
+- `apksigner`-Pfad wird nicht mehr hart auf Build-Tools 34.0.0 verdrahtet; AAB-Prüfung ohne
+  `jarsigner -strict`, da ein selbstsignierter Release-Key sonst als Warnung (Exit 4) endet.
 
 ## [0.4.1] – 2026-09-27
 
