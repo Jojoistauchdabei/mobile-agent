@@ -23,6 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -30,22 +31,35 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
 import com.mobileagent.actions.ActionExecutionResult
 import com.mobileagent.actions.ActionRequest
 import com.mobileagent.models.DefaultModels
+import com.mobileagent.models.ModelDownloadContract
+import com.mobileagent.models.ModelDownloadNotifications
+import com.mobileagent.models.ModelDownloadScheduler
 import com.mobileagent.models.ModelInfo
 import com.mobileagent.models.ModelSpec
+import com.mobileagent.voice.AssistantRole
+import com.mobileagent.voice.AgentVoiceInteractionSession
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
@@ -53,12 +67,18 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val graph = (application as AgentApp).agentGraph
-        setContent { AgentScreen(graph) }
+        val assistText = intent?.getStringExtra(AgentVoiceInteractionSession.EXTRA_ASSIST_TEXT)
+        val autoStartMic = intent?.getBooleanExtra(AgentVoiceInteractionSession.EXTRA_AUTO_START_MIC, false) == true
+        setContent { AgentScreen(graph, assistText, autoStartMic) }
     }
 }
 
 @Composable
-fun AgentScreen(graph: AgentGraph) {
+fun AgentScreen(
+    graph: AgentGraph,
+    assistText: String? = null,
+    autoStartMic: Boolean = false,
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var status by remember { mutableStateOf("Bereit") }
@@ -69,11 +89,11 @@ fun AgentScreen(graph: AgentGraph) {
     var pendingAction by remember { mutableStateOf<ActionRequest?>(null) }
     var actionMessage by remember { mutableStateOf("") }
     var modelInfos by remember { mutableStateOf<List<ModelInfo>>(emptyList()) }
-    var downloadMessage by remember { mutableStateOf("") }
+    var downloadHint by remember { mutableStateOf("") }
+    var pendingDownload by remember { mutableStateOf<ModelSpec?>(null) }
     var layaEnabled by remember { mutableStateOf(graph.router.config.enabled) }
     var actionTriggersEnabled by remember { mutableStateOf(graph.router.config.actionTriggerEnabled) }
     var captureJob by remember { mutableStateOf<Job?>(null) }
-    var downloadingModelId by remember { mutableStateOf<String?>(null) }
 
     suspend fun runCapture() {
         status = "Aufnahme läuft …"
@@ -107,6 +127,17 @@ fun AgentScreen(graph: AgentGraph) {
         }
     }
 
+    suspend fun runText(text: String) {
+        status = "Anfrage läuft …"
+        val result = graph.handleText(text)
+        status = if (result.error == null) "Bereit" else "Hinweis"
+        transcript = result.transcript
+        reply = result.reply
+        route = result.route
+        sources = result.searchResults
+        pendingAction = result.pendingAction
+    }
+
     LaunchedEffect(Unit) {
         modelInfos = DefaultModels.all.map { graph.models.inspect(it) }
     }
@@ -119,30 +150,73 @@ fun AgentScreen(graph: AgentGraph) {
         }
     }
 
+    LaunchedEffect(assistText) {
+        val text = assistText?.trim().orEmpty()
+        if (text.isNotEmpty()) runText(text)
+    }
+
+    LaunchedEffect(autoStartMic) {
+        if (autoStartMic) startCapture()
+    }
+
+    fun enqueueDownload(spec: ModelSpec) {
+        downloadHint = ""
+        ModelDownloadScheduler.enqueue(context, spec)
+    }
+
+    val downloadPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) {
+        pendingDownload?.let(::enqueueDownload)
+        pendingDownload = null
+    }
+
     fun downloadModel(spec: ModelSpec) {
-        if (downloadingModelId != null) return
         if (spec.downloadUrl == null) {
-            downloadMessage = "${spec.displayName}: Datei muss separat als ONNX exportiert werden"
+            downloadHint = "${spec.displayName}: Datei muss separat als ONNX exportiert werden"
             return
         }
-        downloadingModelId = spec.id
-        scope.launch {
-            try {
-                downloadMessage = "${spec.displayName} wird geladen …"
-                val result = graph.models.download(spec) { downloaded, total ->
-                    if (total > 0) {
-                        downloadMessage = "${spec.displayName}: ${downloaded / 1_048_576} / ${total / 1_048_576} MB"
-                    }
-                }
-                downloadMessage = result.fold(
-                    onSuccess = { "${spec.displayName} ist bereit" },
-                    onFailure = { "${spec.displayName}: ${it.message ?: "Download fehlgeschlagen"}" },
-                )
-                modelInfos = DefaultModels.all.map { graph.models.inspect(it) }
-            } finally {
-                downloadingModelId = null
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            pendingDownload = spec
+            downloadPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            enqueueDownload(spec)
+        }
+    }
+
+    fun cancelDownload(spec: ModelSpec) {
+        ModelDownloadScheduler.cancel(context, spec)
+    }
+
+    var isAssistant by remember { mutableStateOf(AssistantRole.isHeld(context)) }
+    val assistantRoleAvailable = remember { AssistantRole.isAvailable(context) }
+
+    val assistantRoleLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) {
+        isAssistant = AssistantRole.isHeld(context)
+    }
+
+    fun requestAssistantRole() {
+        AssistantRole.requestIntent(context)?.let(assistantRoleLauncher::launch)
+    }
+
+    // Rolle kann sich auch ausserhalb der App aendern (Einstellungen/Systemdialog).
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                isAssistant = AssistantRole.isHeld(context)
             }
         }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    fun refreshModels() {
+        scope.launch { modelInfos = DefaultModels.all.map { graph.models.inspect(it) } }
     }
 
     fun executeAction(action: ActionRequest) {
@@ -253,11 +327,26 @@ fun AgentScreen(graph: AgentGraph) {
                 )
                 Text("Laya", style = MaterialTheme.typography.titleMedium)
                 modelInfos.forEach { info ->
-                    ModelRow(info, ::downloadModel, downloadingModelId == null)
+                    DownloadModelRow(
+                        info = info,
+                        onDownload = ::downloadModel,
+                        onCancel = ::cancelDownload,
+                        onSucceeded = ::refreshModels,
+                    )
                 }
-                if (downloadMessage.isNotBlank()) {
-                    Text(downloadMessage, style = MaterialTheme.typography.bodySmall)
+                Text(
+                    "Downloads laufen im Hintergrund weiter und melden sich per Benachrichtigung.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                if (downloadHint.isNotBlank()) {
+                    Text(downloadHint, style = MaterialTheme.typography.bodySmall)
                 }
+                Text("System-Assistent", style = MaterialTheme.typography.titleMedium)
+                AssistantRoleRow(
+                    isAssistant = isAssistant,
+                    available = assistantRoleAvailable,
+                    onRequest = ::requestAssistantRole,
+                )
                 OutlinedButton(
                     onClick = {
                         context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
@@ -290,17 +379,89 @@ fun AgentScreen(graph: AgentGraph) {
 }
 
 @Composable
-private fun ModelRow(info: ModelInfo, onDownload: (ModelSpec) -> Unit, enabled: Boolean) {
-    Row(
-        Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(info.spec.displayName, style = MaterialTheme.typography.bodyMedium)
-            Text("${info.status.name} · ${info.file.name}", style = MaterialTheme.typography.bodySmall)
+private fun AssistantRoleRow(
+    isAssistant: Boolean,
+    available: Boolean,
+    onRequest: () -> Unit,
+) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                if (isAssistant) "Mobile Agent ist dein Assistent" else "Als Assistent einrichten",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            if (!isAssistant && available) {
+                Button(onClick = onRequest) { Text("Einrichten") }
+            }
         }
-        if (info.spec.downloadUrl != null && info.status != com.mobileagent.models.ModelStatus.READY) {
-            OutlinedButton(enabled = enabled, onClick = { onDownload(info.spec) }) { Text("Laden") }
+        Text(
+            when {
+                isAssistant -> "Lange Doppeltaste auf dem Home-Bildschirm öffnet den Assistenten und startet die Aufnahme. Rolle lässt sich in den Android-Einstellungen unter Apps & Benachrichtigungen &gt; Standard-Apps &gt; Assistenten-App wechseln."
+                available -> "Danach startet die lange Doppeltaste auf dem Home-Bildschirm die Sprachaufnahme."
+                else -> "Dieses Gerät unterstützt keine Assistenten-Rolle."
+            },
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
+}
+
+@Composable
+private fun DownloadModelRow(
+    info: ModelInfo,
+    onDownload: (ModelSpec) -> Unit,
+    onCancel: (ModelSpec) -> Unit,
+    onSucceeded: () -> Unit,
+) {
+    val context = LocalContext.current
+    val tag = remember(info.spec.id) { ModelDownloadContract.tagFor(info.spec.id) }
+    val workInfos by remember(tag) {
+        WorkManager.getInstance(context).getWorkInfosByTagFlow(tag)
+    }.collectAsState(initial = null)
+    val active = workInfos?.firstOrNull { !it.state.isFinished }
+    val failed = workInfos?.any { it.state == WorkInfo.State.FAILED } == true
+    val succeeded = workInfos?.any { it.state == WorkInfo.State.SUCCEEDED } == true
+    LaunchedEffect(succeeded) {
+        if (succeeded) onSucceeded()
+    }
+    val progress = active?.progress?.let { data ->
+        data.getLong(ModelDownloadContract.PROGRESS_DOWNLOADED, 0) to
+            data.getLong(ModelDownloadContract.PROGRESS_TOTAL, -1)
+    }
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(info.spec.displayName, style = MaterialTheme.typography.bodyMedium)
+                Text("${info.status.name} · ${info.file.name}", style = MaterialTheme.typography.bodySmall)
+            }
+            when {
+                active != null -> OutlinedButton(onClick = { onCancel(info.spec) }) { Text("Stopp") }
+                info.spec.downloadUrl != null && info.status != com.mobileagent.models.ModelStatus.READY ->
+                    OutlinedButton(onClick = { onDownload(info.spec) }) { Text("Laden") }
+            }
+        }
+        if (active != null && progress != null) {
+            val (downloaded, total) = progress
+            if (total > 0) {
+                LinearProgressIndicator(
+                    progress = { downloaded.toFloat() / total },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            } else {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
+            Text(
+                ModelDownloadNotifications.progressText(downloaded, total),
+                style = MaterialTheme.typography.bodySmall,
+            )
+        } else if (failed) {
+            Text("Download fehlgeschlagen – erneut versuchen", style = MaterialTheme.typography.bodySmall)
         }
     }
 }

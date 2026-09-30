@@ -9,7 +9,8 @@ Alles läuft **lokal auf dem Handy**, kein Cloud-Zwang:
 | Dialog / Reasoning / Tool-Calls (System-2) | [Ternary-Bonsai-1.7B](https://huggingface.co/prism-ml/Ternary-Bonsai-1.7B-gguf) (GGUF, Q2_0, 463 MB) | llama.cpp Android (JNI, Prism-Fork) |
 | Internet-Suche | DuckDuckGo Instant Answer + HTML (kein Key) | OkHttp |
 | Handy-Steuerung | Android Intents, Timer und optionales AccessibilityService | nativ |
-| TTS | Android TextToSpeech | als nächste Ausbaustufe |
+| TTS | Android TextToSpeech | nativ |
+| System-Assistent | `VoiceInteractionService` + `ROLE_ASSISTANT` | nativ |
 
 **Wichtig zu Laya:** Laya ist *kein* generatives Reasoning-Modell, sondern ein
 nicht-autoregressives Entscheidungs-/Klassifikationsmodell (System-1, ~33 ms).
@@ -22,7 +23,7 @@ Mic → Whisper (STT) → Laya-Router (optional) → Bonsai-1.7B (LLM)
     → Tools [DuckDuckGo-Suche | Android-Actions] → Antwort
 ```
 
-Die App enthält bereits die AudioRecord/VAD-Pipeline, verifizierte atomare Modell-Downloads, den optionalen Laya-ONNX-Adapter, sichere Action-Freigabe und die DuckDuckGo-Pipeline. Whisper- und Bonsai-JNI werden über `mobileagent-whisper`/`mobileagent-llama` geladen; die nativen Bibliotheken werden noch nicht in den Standard-APK aufgenommen.
+Die App enthält bereits die AudioRecord/VAD-Pipeline, verifizierte atomare Modell-Downloads, den optionalen Laya-ONNX-Adapter, sichere Action-Freigabe und die DuckDuckGo-Pipeline. Whisper- und Bonsai-JNI werden über `mobileagent-whisper`/`mobileagent-llama` geladen; die nativen Bibliotheken werden noch nicht in den Standard-APK aufgenommen. Modelle lassen sich per WorkManager im Hintergrund laden (Fortschritts-Benachrichtigung, Retry bei Netzwerkfehlern); das Launcher-Icon ist adaptiv mit Themed-Icon-Unterstützung.
 
 ## Schnellstart
 
@@ -32,6 +33,13 @@ Die App enthält bereits die AudioRecord/VAD-Pipeline, verifizierte atomare Mode
 4. Für Laya: `python -m pip install -r scripts/export-laya-onnx-requirements.txt` und `python scripts/export-laya-onnx.py --output models`; Ergebnis sind `laya-multilingual.onnx` und `laya-tokenizer.json`.
 5. `scripts/install-models.sh` kopiert die Dateien in den installierten Debug-Emulator.
 6. App starten, Mikrofon-Erlaubnis geben und sprechen.
+
+**Als System-Assistent:** In der App auf *Als Assistent einrichten* tippen (oder
+*Einstellungen → Apps → Standard-Apps → Assistenten-App*). Danach startet die lange
+Doppeltaste auf dem Home-Bildschirm die App und direkt die Sprachaufnahme. Kommt die
+Anfrage als Text über `ASSIST`, wird sie sofort beantwortet. Rückgaben an den aufrufenden
+Assistenten sind mit der öffentlichen API nicht möglich – die Antwort erscheint in der App
+und wird vorgelesen.
 
 Die App kann Whisper/Bonsai auch im Download-Bereich laden. Laya ist optional: Ohne exportiertes ONNX nutzt sie den Heuristik-Fallback; mit `laya-multilingual.onnx` und `laya-tokenizer.json` wird der ONNX-Backend automatisch erkannt.
 

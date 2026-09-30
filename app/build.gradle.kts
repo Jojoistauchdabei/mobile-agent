@@ -76,6 +76,7 @@ dependencies {
     implementation(libs.lifecycle.runtime)
     implementation(libs.activity.compose)
     implementation(libs.coroutines)
+    implementation(libs.work.runtime.ktx)
     implementation(libs.retrofit)
     implementation(libs.retrofit.scalars)
     implementation(libs.okhttp)

@@ -4,6 +4,15 @@ Alle relevanten Änderungen stehen hier (Keep a Changelog, SemVer).
 
 ## [Unreleased]
 
+### Added
+- Adaptives App-Icon (Mikrofon mit Schallwellen, inkl. Themed-Icon).
+- Modell-Downloads laufen per WorkManager im Hintergrund mit Fortschritts-Benachrichtigung,
+  Abschluss-/Fehlermeldung, Retry bei Netzwerkfehlern und Stopp-Button in der UI.
+- Registrierung als System-Assistent: `VoiceInteractionService` + Session, `ASSIST`-Intent,
+  Rollen-Button für `RoleManager.ROLE_ASSISTANT`. Die lange Doppeltaste auf dem
+  Home-Bildschirm öffnet die App und startet die Aufnahme; eine vom System gelieferte
+  Assist-Textfrage wird direkt beantwortet.
+
 ## [0.4.3] – 2026-09-29
 
 Keine relevanten Änderungen.

@@ -20,7 +20,8 @@
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:icon="@android:mipmap/sym_def_app_icon"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:label="Mobile Agent"
         android:usesCleartextTraffic="false"
         android:theme="@android:style/Theme.Material.Light">
@@ -31,12 +32,40 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Bildschirm, den das System als Assistent anzeigt -->
+            <intent-filter>
+                <action android:name="android.intent.action.ASSIST" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
         </activity>
 
         <service
             android:name=".voice.VoiceService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
+
+        <!-- System-Assistent: lange Doppeltaste auf dem Home-Bildschirm -->
+        <service
+            android:name=".voice.AgentVoiceInteractionService"
+            android:exported="true"
+            android:label="Mobile Agent"
+            android:permission="android.permission.BIND_VOICE_INTERACTION">
+            <intent-filter>
+                <action android:name="android.service.voice.VoiceInteractionService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.speech.VoiceInteractionService"
+                android:resource="@xml/voice_interaction_service" />
+        </service>
+
+        <service
+            android:name=".voice.AgentVoiceInteractionSessionService"
+            android:exported="true"
+            android:permission="android.permission.BIND_VOICE_INTERACTION">
+            <intent-filter>
+                <action android:name="android.service.voice.VoiceInteractionSessionService" />
+            </intent-filter>
+        </service>
 
         <receiver
             android:name=".timer.TimerReceiver"

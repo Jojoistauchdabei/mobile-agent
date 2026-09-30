@@ -1,0 +1,24 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Mikrofon-Kapsel -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M46,40 a8,8 0 0 1 16,0 v12 a8,8 0 0 1 -16,0 z" />
+    <!-- Mikrofon-Buegel, Stiel und Fuss -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:pathData="M40,56 A14,14 0 0 0 68,56 M54,70 v6 M46,80 h16" />
+    <!-- Schallwellen -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#7FE0A8"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:pathData="M28,46 v16 M36,41 v26 M72,41 v26 M80,46 v16" />
+</vector>
