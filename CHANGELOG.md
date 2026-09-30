@@ -4,6 +4,8 @@ Alle relevanten Änderungen stehen hier (Keep a Changelog, SemVer).
 
 ## [Unreleased]
 
+## [0.5.0] – 2026-09-30
+
 ### Added
 - Adaptives App-Icon (Mikrofon mit Schallwellen, inkl. Themed-Icon).
 - Modell-Downloads laufen per WorkManager im Hintergrund mit Fortschritts-Benachrichtigung,
