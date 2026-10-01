@@ -11,6 +11,7 @@ Alles läuft **lokal auf dem Handy**, kein Cloud-Zwang:
 | Handy-Steuerung | Android Intents, Timer und optionales AccessibilityService | nativ |
 | TTS | Android TextToSpeech | nativ |
 | System-Assistent | `VoiceInteractionService` + `ROLE_ASSISTANT` | nativ |
+| Spracheingabe (Tastatur) | `RecognitionService` + Whisper | nativ |
 
 **Wichtig zu Laya:** Laya ist *kein* generatives Reasoning-Modell, sondern ein
 nicht-autoregressives Entscheidungs-/Klassifikationsmodell (System-1, ~33 ms).
@@ -40,6 +41,12 @@ Doppeltaste auf dem Home-Bildschirm die App und direkt die Sprachaufnahme. Kommt
 Anfrage als Text über `ASSIST`, wird sie sofort beantwortet. Rückgaben an den aufrufenden
 Assistenten sind mit der öffentlichen API nicht möglich – die Antwort erscheint in der App
 und wird vorgelesen.
+
+**Als Spracheingabe in der Tastatur:** Nach der Assistenten-Rolle bietet das System den
+Dienst in den Einstellungen der Tastatur als Mikrofon-Eingabe an (bei Gboard:
+*Einstellungen → Spracheingabe → Mobile Agent*). Aufgenommen wird lokal mit
+`AudioCapture` und mit Whisper transkribiert; ohne Whisper-Modell bzw. JNI-Bibliothek meldet
+der Dienst einen Fehler.
 
 Die App kann Whisper/Bonsai auch im Download-Bereich laden. Laya ist optional: Ohne exportiertes ONNX nutzt sie den Heuristik-Fallback; mit `laya-multilingual.onnx` und `laya-tokenizer.json` wird der ONNX-Backend automatisch erkannt.
 

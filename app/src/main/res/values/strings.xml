@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="accessibility_desc">Mobile Agent bedient auf Wunsch Apps per Accessibility (nur nach Freigabe).</string>
+    <string name="recognition_service_description">Lokale Spracheingabe mit Whisper, ohne Cloud-Upload</string>
 </resources>

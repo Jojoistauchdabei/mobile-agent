@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RecognitionService xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/recognition_service_description">
+    <RecognitionSupport>
+        <RecognizerIntent>
+            <Language>de-DE</Language>
+            <Language>en-US</Language>
+        </RecognizerIntent>
+    </RecognitionSupport>
+</RecognitionService>

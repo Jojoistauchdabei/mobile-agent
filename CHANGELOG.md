@@ -14,6 +14,10 @@ Alle relevanten Änderungen stehen hier (Keep a Changelog, SemVer).
   Rollen-Button für `RoleManager.ROLE_ASSISTANT`. Die lange Doppeltaste auf dem
   Home-Bildschirm öffnet die App und startet die Aufnahme; eine vom System gelieferte
   Assist-Textfrage wird direkt beantwortet.
+- Spracheingabe für Tastaturen und Systemdialoge: `RecognitionService` nimmt lokal auf und
+  transkribiert mit Whisper; Sprachsupport für de-DE/en-DE… wird über `recognition_service.xml`
+  gemeldet. Ohne Whisper-Modell oder JNI-Bibliothek meldet der Dienst einen Fehler statt
+  einer erfundenen Transkription.
 
 ## [0.4.3] – 2026-09-29
 

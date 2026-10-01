@@ -67,6 +67,20 @@
             </intent-filter>
         </service>
 
+        <!-- Spracheingabe für Tastaturen und Systemdialoge -->
+        <service
+            android:name=".voice.AgentRecognitionService"
+            android:exported="true"
+            android:label="Mobile Agent Spracheingabe"
+            android:permission="android.permission.BIND_RECOGNITION_SERVICE">
+            <intent-filter>
+                <action android:name="android.speech.RecognitionService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.speech"
+                android:resource="@xml/recognition_service" />
+        </service>
+
         <receiver
             android:name=".timer.TimerReceiver"
             android:exported="false" />
